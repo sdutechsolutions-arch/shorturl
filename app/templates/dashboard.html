@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Links · shorturl{% endblock %}
+{% block content %}
+<h1>Links</h1>
+{% if links|length == 0 %}
+  <p class="muted">No links yet. <a href="/admin/new">Create the first one →</a></p>
+{% else %}
+<table class="links">
+  <thead>
+    <tr>
+      <th>Short</th><th>Title / target</th><th>Clicks</th><th>Status</th><th>Created</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for l in links %}
+    {% set short = base_url.rstrip('/') ~ '/' ~ l.slug %}
+    {% set expired = l.expires_at and l.expires_at < now %}
+    <tr class="{% if not l.is_active or expired %}inactive{% endif %}">
+      <td><a href="{{ short }}" target="_blank" rel="noopener">/{{ l.slug }}</a></td>
+      <td>
+        {% if l.title %}<strong>{{ l.title }}</strong><br>{% endif %}
+        <span class="muted url">{{ l.target_url }}</span>
+      </td>
+      <td>
+        {{ l.click_count }}
+        {% if l.last_clicked_at %}<br><span class="muted small">last {{ l.last_clicked_at.strftime('%Y-%m-%d %H:%M') }} UTC</span>{% endif %}
+      </td>
+      <td>
+        {% if expired %}<span class="badge bad">expired</span>
+        {% elif not l.is_active %}<span class="badge warn">disabled</span>
+        {% else %}<span class="badge ok">active</span>{% endif %}
+        {% if l.expires_at and not expired %}<br><span class="muted small">until {{ l.expires_at.strftime('%Y-%m-%d') }}</span>{% endif %}
+      </td>
+      <td><span class="muted small">{{ l.created_at.strftime('%Y-%m-%d') }}</span></td>
+      <td class="actions">
+        <a href="/admin/{{ l.id }}/edit">edit</a>
+        <a href="/admin/{{ l.id }}/qr.png" target="_blank">qr</a>
+        <form method="post" action="/admin/{{ l.id }}/toggle" class="inline">
+          <button type="submit" class="linkbtn">{% if l.is_active %}disable{% else %}enable{% endif %}</button>
+        </form>
+        <form method="post" action="/admin/{{ l.id }}/delete" class="inline" onsubmit="return confirm('Delete /{{ l.slug }}?')">
+          <button type="submit" class="linkbtn danger">delete</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

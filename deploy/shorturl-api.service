@@ -1,0 +1,27 @@
+[Unit]
+Description=shorturl URL shortener API
+After=network-online.target postgresql-16.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=narendhar
+Group=narendhar
+WorkingDirectory=/home/narendhar/projects/shorturl
+EnvironmentFile=/home/narendhar/projects/shorturl/.env
+ExecStart=/home/narendhar/projects/shorturl/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8401
+Restart=on-failure
+RestartSec=2
+LimitNOFILE=4096
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/narendhar/projects/shorturl
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

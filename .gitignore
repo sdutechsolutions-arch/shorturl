@@ -1,0 +1,11 @@
+# secrets / local state
+.env
+
+# python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# backups
+*.bak*

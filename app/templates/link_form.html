@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{% if link %}Edit{% else %}New link{% endif %} · shorturl{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{% if link %}Edit link{% else %}New link{% endif %}</h1>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% set f = form if form is defined else (link or {}) %}
+  <form method="post" action="{% if link %}/admin/{{ link.id }}/edit{% else %}/admin/new{% endif %}">
+    <label>Target URL
+      <input type="text" name="target_url" required
+             value="{{ f.target_url or '' }}"
+             placeholder="https://example.com/some/long/path">
+    </label>
+    <label>Slug <span class="muted small">(leave blank for random)</span>
+      <div class="prefix">
+        <span>{{ base_url.rstrip('/') }}/</span>
+        <input type="text" name="slug" value="{{ f.slug or '' }}"
+               pattern="[A-Za-z0-9_-]{1,64}" maxlength="64"
+               {% if link %}required{% endif %}>
+      </div>
+    </label>
+    <label>Title <span class="muted small">(optional, internal note)</span>
+      <input type="text" name="title" value="{{ f.title or '' }}" maxlength="200">
+    </label>
+    <label>Expires at <span class="muted small">(optional, ISO datetime UTC e.g. 2026-12-31T23:59)</span>
+      <input type="text" name="expires_at" placeholder="2026-12-31T23:59"
+             value="{% if f.expires_at %}{{ f.expires_at.isoformat() if f.expires_at.isoformat is defined else f.expires_at }}{% endif %}">
+    </label>
+    {% if link %}
+    <label class="checkbox">
+      <input type="checkbox" name="is_active" {% if link.is_active %}checked{% endif %}>
+      Active (uncheck to disable redirect)
+    </label>
+    {% endif %}
+    <div class="row">
+      <button type="submit">{% if link %}Save changes{% else %}Create link{% endif %}</button>
+      <a class="cancel" href="/admin/">cancel</a>
+    </div>
+  </form>
+  {% if link %}
+    <hr>
+    <p><a href="/admin/{{ link.id }}/qr.png" target="_blank">Download QR code →</a></p>
+  {% endif %}
+</div>
+{% endblock %}
