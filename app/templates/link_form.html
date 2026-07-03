@@ -31,28 +31,33 @@
       <input type="checkbox" name="is_active" {% if link.is_active %}checked{% endif %}>
       Active (uncheck to disable redirect)
     </label>
+    {% endif %}
 
     <fieldset class="qr-design">
       <legend>QR design</legend>
       <div class="qr-grid">
         <label>Foreground
-          <input type="color" name="qr_fg" value="{{ link.qr_fg or '#000000' }}">
+          <input type="color" name="qr_fg" value="{{ design.fg }}">
         </label>
         <label>Background
-          <input type="color" name="qr_bg" value="{{ link.qr_bg or '#FFFFFF' }}">
+          <input type="color" name="qr_bg" value="{{ design.bg }}">
         </label>
         <label>Size (px)
-          <input type="number" name="qr_size" min="128" max="2048" step="32" value="{{ link.qr_size or 512 }}">
+          <input type="number" name="qr_size" min="128" max="2048" step="32" value="{{ design.size }}">
         </label>
         <label>Error correction
           <select name="qr_ec">
             {% for lvl in ec_levels %}
-              <option value="{{ lvl }}" {% if (link.qr_ec or 'M') == lvl %}selected{% endif %}>{{ lvl }}</option>
+              <option value="{{ lvl }}" {% if design.ec == lvl %}selected{% endif %}>{{ lvl }}</option>
             {% endfor %}
           </select>
         </label>
       </div>
-      <label>Center logo <span class="muted small">(PNG/JPG; higher error correction recommended)</span>
+      <label class="checkbox">
+        <input type="checkbox" name="use_brand_logo" {% if f.use_brand_logo %}checked{% endif %}>
+        Use Janapriya logo in the centre
+      </label>
+      <label>…or upload a custom center logo <span class="muted small">(PNG/JPG)</span>
         <input type="file" name="logo" accept="image/png,image/jpeg">
       </label>
       {% if has_logo %}
@@ -60,9 +65,9 @@
           <input type="checkbox" name="remove_logo"> Remove current logo
         </label>
       {% endif %}
-      <p class="muted small">Save changes to apply the design, then re-download the QR below.</p>
+      <p class="muted small">Adding a logo automatically raises error correction to H so it still scans.{% if link %} Save, then re-download the QR below.{% endif %}</p>
     </fieldset>
-    {% endif %}
+
     <div class="row">
       <button type="submit">{% if link %}Save changes{% else %}Create link{% endif %}</button>
       <a class="cancel" href="/admin/">cancel</a>
