@@ -601,8 +601,13 @@ def _breakdowns(cur, days: int, link_id: int | None = None) -> dict:
 
 
 def _sparkline_svg(counts: list[int], width: int = 120, height: int = 32) -> str:
-    if not counts:
-        counts = [0]
+    # No activity in the window: show a muted dashed baseline so the empty
+    # state reads as intentional rather than a faint spike.
+    if not counts or sum(counts) == 0:
+        y = height / 2
+        return (f'<svg class="spark spark-flat" viewBox="0 0 {width} {height}" preserveAspectRatio="none" aria-hidden="true">'
+                f'<line x1="0" y1="{y:.1f}" x2="{width}" y2="{y:.1f}" stroke="var(--line-strong)" '
+                f'stroke-width="1.4" stroke-linecap="round" stroke-dasharray="2 4"/></svg>')
     peak = max(counts) or 1
     n = len(counts)
     step = width / (n - 1) if n > 1 else width
