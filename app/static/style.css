@@ -63,3 +63,45 @@ table.links .url { font-family: ui-monospace, monospace; font-size: 12px; word-b
 .badge.bad { background: var(--bad-bg); color: var(--bad-fg); }
 hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 a { color: var(--brand); }
+
+/* ---------- QR design ---------- */
+fieldset.qr-design { border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; margin: 16px 0; }
+fieldset.qr-design legend { font-weight: 600; font-size: 13px; color: var(--muted); padding: 0 6px; }
+.qr-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.qr-grid label { margin: 4px 0; font-size: 13px; }
+.qr-grid input[type="color"] { width: 100%; height: 36px; padding: 2px; border: 1px solid var(--line); border-radius: 4px; }
+.qr-grid input[type="number"], .qr-grid select {
+  display: block; width: 100%; padding: 8px 10px; margin-top: 4px;
+  border: 1px solid var(--line); border-radius: 4px; font-size: 14px; font-family: inherit;
+}
+.qr-preview { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+.qr-preview img { border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.qr-preview code { background: #f3f4f6; padding: 1px 5px; border-radius: 3px; font-size: 12px; word-break: break-all; }
+
+/* ---------- stats ---------- */
+.stats-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.stats-head h1 { margin-bottom: 4px; }
+.range { display: flex; gap: 6px; align-items: center; }
+.range .badge { text-decoration: none; background: #f3f4f6; color: var(--muted); }
+.statcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 20px 0; }
+.statcard { background: white; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; }
+.statcard .n { font-size: 26px; font-weight: 700; color: var(--brand); line-height: 1.1; }
+.statcard .l { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.statcard.accent .n { color: var(--accent); }
+.chart-card { margin-bottom: 20px; }
+.chart-card h3 { margin: 0 0 12px; font-size: 15px; }
+svg.barchart { display: block; height: 160px; }
+svg.barchart .axis { font-size: 11px; fill: var(--muted); font-family: inherit; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; }
+.swatch.brand { background: var(--brand); }
+.swatch.accent { background: var(--accent); }
+.breakdowns { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.bd { background: white; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.bd h3 { margin: 0 0 10px; font-size: 14px; }
+table.bars { width: 100%; border-collapse: collapse; }
+table.bars td { padding: 3px 0; vertical-align: middle; font-size: 13px; }
+.bd-label { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px !important; color: var(--fg); }
+.bd-bar { width: 100%; }
+.bd-bar span { display: block; height: 14px; background: var(--brand); border-radius: 3px; min-width: 2px; }
+.bd-n { text-align: right; padding-left: 10px !important; color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) { .qr-grid { grid-template-columns: repeat(2, 1fr); } }

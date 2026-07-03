@@ -8,7 +8,7 @@
 <table class="links">
   <thead>
     <tr>
-      <th>Short</th><th>Title / target</th><th>Clicks</th><th>Status</th><th>Created</th><th></th>
+      <th>Short</th><th>Title / target</th><th>Clicks</th><th>QR scans</th><th>Status</th><th>Created</th><th></th>
     </tr>
   </thead>
   <tbody>
@@ -22,8 +22,12 @@
         <span class="muted url">{{ l.target_url }}</span>
       </td>
       <td>
-        {{ l.click_count }}
+        <a href="/admin/{{ l.id }}/stats">{{ l.click_count }}</a>
         {% if l.last_clicked_at %}<br><span class="muted small">last {{ l.last_clicked_at.strftime('%Y-%m-%d %H:%M') }} UTC</span>{% endif %}
+      </td>
+      <td>
+        {{ l.qr_scans }}
+        {% if l.event_count %}<br><span class="muted small">{{ l.event_count }} logged</span>{% endif %}
       </td>
       <td>
         {% if expired %}<span class="badge bad">expired</span>
@@ -33,6 +37,7 @@
       </td>
       <td><span class="muted small">{{ l.created_at.strftime('%Y-%m-%d') }}</span></td>
       <td class="actions">
+        <a href="/admin/{{ l.id }}/stats">stats</a>
         <a href="/admin/{{ l.id }}/edit">edit</a>
         <a href="/admin/{{ l.id }}/qr.png" target="_blank">qr</a>
         <form method="post" action="/admin/{{ l.id }}/toggle" class="inline">

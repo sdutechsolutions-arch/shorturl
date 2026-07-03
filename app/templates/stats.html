@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Stats · /{{ link.slug }} · shorturl{% endblock %}
+
+{% macro breakdown(title, rows) %}
+  <div class="bd">
+    <h3>{{ title }}</h3>
+    {% if rows|length == 0 %}
+      <p class="muted small">No data.</p>
+    {% else %}
+      {% set top = rows[0].n or 1 %}
+      <table class="bars">
+        {% for r in rows %}
+        <tr>
+          <td class="bd-label" title="{{ r.label }}">{{ r.label }}</td>
+          <td class="bd-bar"><span style="width: {{ (100 * r.n / top)|round(1) }}%"></span></td>
+          <td class="bd-n">{{ r.n }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{% block content %}
+<div class="stats-head">
+  <div>
+    <h1>/{{ link.slug }}</h1>
+    <p class="muted url">{{ link.target_url }}</p>
+    {% if link.title %}<p class="muted small">{{ link.title }}</p>{% endif %}
+  </div>
+  <div class="range">
+    <span class="muted small">Window:</span>
+    {% for d in [7, 30, 90, 365] %}
+      <a class="badge {% if days == d %}ok{% endif %}" href="/admin/{{ link.id }}/stats?days={{ d }}">{{ d }}d</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="statcards">
+  <div class="statcard"><span class="n">{{ head.total }}</span><span class="l">hits ({{ days }}d)</span></div>
+  <div class="statcard accent"><span class="n">{{ head.qr }}</span><span class="l">QR scans</span></div>
+  <div class="statcard"><span class="n">{{ head.link }}</span><span class="l">link clicks</span></div>
+  <div class="statcard"><span class="n">{{ head.direct }}</span><span class="l">direct</span></div>
+  <div class="statcard"><span class="n">{{ head.unique_ips }}</span><span class="l">unique IPs</span></div>
+  <div class="statcard"><span class="n">{{ head.humans }}</span><span class="l">humans</span></div>
+  <div class="statcard"><span class="n">{{ head.bots }}</span><span class="l">bots</span></div>
+  <div class="statcard"><span class="n">{{ link.click_count }}</span><span class="l">lifetime total</span></div>
+</div>
+
+<div class="card chart-card">
+  <h3>Hits per day <span class="muted small">— <span class="swatch brand"></span> total · <span class="swatch accent"></span> QR</span></h3>
+  {{ chart|safe }}
+</div>
+
+<div class="breakdowns">
+  {{ breakdown('Source', breakdowns.source) }}
+  {{ breakdown('Device', breakdowns.device) }}
+  {{ breakdown('Browser', breakdowns.browser) }}
+  {{ breakdown('OS', breakdowns.os) }}
+  {{ breakdown('Country', breakdowns.country) }}
+  {{ breakdown('City', breakdowns.city) }}
+  {{ breakdown('Referrer', breakdowns.referrer) }}
+</div>
+
+<p style="margin-top:24px"><a href="/admin/">← back to links</a></p>
+{% endblock %}

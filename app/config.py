@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     base_url: str = "https://shorturl.janapriyahomes.com"
     slug_length: int = 6
     session_max_age_seconds: int = 60 * 60 * 24 * 14
+    geoip_db_path: str = "data/dbip-city-lite.mmdb"
+    logo_dir: str = "data/logos"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

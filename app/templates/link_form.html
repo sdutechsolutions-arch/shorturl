@@ -5,7 +5,7 @@
   <h1>{% if link %}Edit link{% else %}New link{% endif %}</h1>
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
   {% set f = form if form is defined else (link or {}) %}
-  <form method="post" action="{% if link %}/admin/{{ link.id }}/edit{% else %}/admin/new{% endif %}">
+  <form method="post" enctype="multipart/form-data" action="{% if link %}/admin/{{ link.id }}/edit{% else %}/admin/new{% endif %}">
     <label>Target URL
       <input type="text" name="target_url" required
              value="{{ f.target_url or '' }}"
@@ -31,6 +31,37 @@
       <input type="checkbox" name="is_active" {% if link.is_active %}checked{% endif %}>
       Active (uncheck to disable redirect)
     </label>
+
+    <fieldset class="qr-design">
+      <legend>QR design</legend>
+      <div class="qr-grid">
+        <label>Foreground
+          <input type="color" name="qr_fg" value="{{ link.qr_fg or '#000000' }}">
+        </label>
+        <label>Background
+          <input type="color" name="qr_bg" value="{{ link.qr_bg or '#FFFFFF' }}">
+        </label>
+        <label>Size (px)
+          <input type="number" name="qr_size" min="128" max="2048" step="32" value="{{ link.qr_size or 512 }}">
+        </label>
+        <label>Error correction
+          <select name="qr_ec">
+            {% for lvl in ec_levels %}
+              <option value="{{ lvl }}" {% if (link.qr_ec or 'M') == lvl %}selected{% endif %}>{{ lvl }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <label>Center logo <span class="muted small">(PNG/JPG; higher error correction recommended)</span>
+        <input type="file" name="logo" accept="image/png,image/jpeg">
+      </label>
+      {% if has_logo %}
+        <label class="checkbox">
+          <input type="checkbox" name="remove_logo"> Remove current logo
+        </label>
+      {% endif %}
+      <p class="muted small">Save changes to apply the design, then re-download the QR below.</p>
+    </fieldset>
     {% endif %}
     <div class="row">
       <button type="submit">{% if link %}Save changes{% else %}Create link{% endif %}</button>
@@ -39,7 +70,18 @@
   </form>
   {% if link %}
     <hr>
-    <p><a href="/admin/{{ link.id }}/qr.png" target="_blank">Download QR code →</a></p>
+    <div class="qr-preview">
+      <img src="/admin/{{ link.id }}/qr.png" alt="QR preview" width="180" height="180">
+      <div>
+        <p class="muted small">Encodes <code>{{ base_url.rstrip('/') }}/{{ link.slug }}?s=q</code> so scans are counted separately from clicks.</p>
+        <p>
+          <a href="/admin/{{ link.id }}/qr.png" download>Download PNG →</a>
+          &nbsp;·&nbsp;
+          <a href="/admin/{{ link.id }}/qr.svg" download>Download SVG →</a>
+        </p>
+        <p><a href="/admin/{{ link.id }}/stats">View analytics →</a></p>
+      </div>
+    </div>
   {% endif %}
 </div>
 {% endblock %}
