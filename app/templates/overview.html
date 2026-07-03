@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Home · shorturl{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Home</h1>
+    <div class="sub">Overview · last {{ days }} days</div>
+  </div>
+  <div class="range">
+    {% for d in [7, 30, 90] %}
+      <a class="badge {% if days == d %}ok{% endif %}" href="/admin/?days={{ d }}">{{ d }}d</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="statcards">
+  <div class="statcard"><span class="n">{{ links_stat.total }}</span><span class="l">Links</span></div>
+  <div class="statcard"><span class="n">{{ links_stat.active }}</span><span class="l">Active</span></div>
+  <div class="statcard"><span class="n">{{ links_stat.lifetime_clicks }}</span><span class="l">Lifetime clicks</span></div>
+  <div class="statcard"><span class="n">{{ head.total }}</span><span class="l">Hits · {{ days }}d</span></div>
+  <div class="statcard accent"><span class="n">{{ head.qr }}</span><span class="l">QR scans · {{ days }}d</span></div>
+  <div class="statcard"><span class="n">{{ head.unique_ips }}</span><span class="l">Unique visitors</span></div>
+</div>
+
+<div class="card chart-card">
+  <h3>Engagement <span class="muted small">— <span class="swatch brand"></span> total · <span class="swatch accent"></span> QR</span></h3>
+  {{ chart|safe }}
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Top links</h3>
+    <a class="muted small" href="/admin/links">All links →</a>
+  </div>
+  {% if top_links|length == 0 %}
+    <div class="empty"><p>No links yet.</p><a class="btn" href="/admin/new">Create your first link</a></div>
+  {% else %}
+  <table class="mini">
+    <tbody>
+    {% for l in top_links %}
+      <tr>
+        <td><a href="/admin/{{ l.id }}/stats">/{{ l.slug }}</a>{% if l.title %} <span class="muted small">· {{ l.title }}</span>{% endif %}</td>
+        <td class="num">{{ l.click_count }} <span class="muted small">clicks</span></td>
+        <td class="num">{{ l.qr_scans }} <span class="muted small">QR</span></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

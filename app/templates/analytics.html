@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Analytics · shorturl{% endblock %}
+
+{% macro breakdown(title, rows) %}
+  <div class="bd">
+    <h3>{{ title }}</h3>
+    {% if rows|length == 0 %}
+      <p class="muted small">No data.</p>
+    {% else %}
+      {% set top = rows[0].n or 1 %}
+      <table class="bars">
+        {% for r in rows %}
+        <tr>
+          <td class="bd-label" title="{{ r.label }}">{{ r.label }}</td>
+          <td class="bd-bar"><span style="width: {{ (100 * r.n / top)|round(1) }}%"></span></td>
+          <td class="bd-n">{{ r.n }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Analytics</h1>
+    <div class="sub">All links · last {{ days }} days</div>
+  </div>
+  <div class="range">
+    {% for d in [7, 30, 90, 365] %}
+      <a class="badge {% if days == d %}ok{% endif %}" href="/admin/analytics?days={{ d }}">{{ d }}d</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="statcards">
+  <div class="statcard"><span class="n">{{ head.total }}</span><span class="l">Total hits</span></div>
+  <div class="statcard accent"><span class="n">{{ head.qr }}</span><span class="l">QR scans</span></div>
+  <div class="statcard"><span class="n">{{ head.link }}</span><span class="l">Link clicks</span></div>
+  <div class="statcard"><span class="n">{{ head.direct }}</span><span class="l">Direct</span></div>
+  <div class="statcard"><span class="n">{{ head.unique_ips }}</span><span class="l">Unique visitors</span></div>
+  <div class="statcard"><span class="n">{{ head.humans }}</span><span class="l">Humans</span></div>
+  <div class="statcard"><span class="n">{{ head.bots }}</span><span class="l">Bots</span></div>
+</div>
+
+<div class="card chart-card">
+  <h3>Hits per day <span class="muted small">— <span class="swatch brand"></span> total · <span class="swatch accent"></span> QR</span></h3>
+  {{ chart|safe }}
+</div>
+
+<div class="breakdowns">
+  <div class="bd">
+    <h3>Top links</h3>
+    {% if top_links|length == 0 %}
+      <p class="muted small">No hits in this window.</p>
+    {% else %}
+      {% set top = top_links[0].n or 1 %}
+      <table class="bars">
+        {% for l in top_links %}
+        <tr>
+          <td class="bd-label" title="/{{ l.slug }}"><a href="/admin/{{ l.id }}/stats">/{{ l.slug }}</a></td>
+          <td class="bd-bar"><span style="width: {{ (100 * l.n / top)|round(1) }}%"></span></td>
+          <td class="bd-n">{{ l.n }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+  </div>
+  {{ breakdown('Source', breakdowns.source) }}
+  {{ breakdown('Country', breakdowns.country) }}
+  {{ breakdown('City', breakdowns.city) }}
+  {{ breakdown('Device', breakdowns.device) }}
+  {{ breakdown('Browser', breakdowns.browser) }}
+  {{ breakdown('OS', breakdowns.os) }}
+  {{ breakdown('Referrer', breakdowns.referrer) }}
+</div>
+{% endblock %}

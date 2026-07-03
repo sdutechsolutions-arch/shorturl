@@ -203,11 +203,39 @@ def logout() -> Response:
 
 @app.get("/admin/", response_class=HTMLResponse)
 @app.get("/admin", response_class=HTMLResponse)
-def dashboard(request: Request, user: str = Depends(require_user)) -> Response:
+def overview(request: Request, user: str = Depends(require_user), days: int = 30) -> Response:
+    days = min(365, max(1, days))
+    with db.conn() as c, c.cursor() as cur:
+        cur.execute("""SELECT COUNT(*) AS total,
+                              COUNT(*) FILTER (WHERE is_active) AS active,
+                              COALESCE(SUM(click_count), 0) AS lifetime_clicks
+                       FROM links""")
+        links_stat = cur.fetchone()
+        head = _headline(cur, days)
+        series = _daily_series(cur, days)
+        cur.execute("""
+            SELECT l.id, l.slug, l.title, l.target_url, l.click_count,
+                   (SELECT COUNT(*) FROM click_events e
+                      WHERE e.link_id = l.id AND e.source = 'qr') AS qr_scans
+            FROM links l
+            ORDER BY l.click_count DESC, l.created_at DESC
+            LIMIT 6
+        """)
+        top_links = cur.fetchall()
+    return templates.TemplateResponse(
+        request,
+        "overview.html",
+        {"user": user, "nav": "home", "base_url": settings.base_url, "days": days,
+         "links_stat": links_stat, "head": head, "chart": _bars_svg(series), "top_links": top_links},
+    )
+
+
+@app.get("/admin/links", response_class=HTMLResponse)
+def links_list(request: Request, user: str = Depends(require_user)) -> Response:
     with db.conn() as c, c.cursor() as cur:
         cur.execute("""
             SELECT l.id, l.slug, l.target_url, l.title, l.is_active, l.expires_at,
-                   l.click_count, l.last_clicked_at, l.created_at,
+                   l.click_count, l.last_clicked_at, l.created_at, l.qr_logo,
                    (SELECT COUNT(*) FROM click_events e
                       WHERE e.link_id = l.id AND e.source = 'qr') AS qr_scans,
                    (SELECT COUNT(*) FROM click_events e
@@ -217,10 +245,26 @@ def dashboard(request: Request, user: str = Depends(require_user)) -> Response:
             LIMIT 500
         """)
         links = cur.fetchall()
+        cur.execute("""SELECT link_id, date_trunc('day', ts)::date AS d, COUNT(*) AS n
+                       FROM click_events WHERE ts >= NOW() - make_interval(days => 14)
+                       GROUP BY 1, 2""")
+        spark_rows = cur.fetchall()
+    today = datetime.now(timezone.utc).date()
+    days14 = [today - timedelta(days=i) for i in range(13, -1, -1)]
+    by_link: dict[int, dict] = {}
+    for r in spark_rows:
+        by_link.setdefault(r["link_id"], {})[r["d"]] = r["n"]
+    flat = _sparkline_svg([0] * 14)
+    sparklines = {
+        l["id"]: (_sparkline_svg([by_link[l["id"]].get(d, 0) for d in days14])
+                  if l["id"] in by_link else flat)
+        for l in links
+    }
     return templates.TemplateResponse(
         request,
-        "dashboard.html",
-        {"user": user, "links": links, "base_url": settings.base_url, "now": datetime.now(timezone.utc)},
+        "links.html",
+        {"user": user, "nav": "links", "base_url": settings.base_url,
+         "now": datetime.now(timezone.utc), "links": links, "sparklines": sparklines},
     )
 
 
@@ -229,7 +273,7 @@ def new_get(request: Request, user: str = Depends(require_user)) -> Response:
     return templates.TemplateResponse(
         request,
         "link_form.html",
-        {"user": user, "link": None, "error": None, "base_url": settings.base_url,
+        {"user": user, "nav": "create", "link": None, "error": None, "base_url": settings.base_url,
          "ec_levels": EC_LEVELS, "design": {"fg": "#000000", "bg": "#FFFFFF", "size": 512, "ec": "M"},
          "has_logo": False},
     )
@@ -277,7 +321,7 @@ def new_post(
         return templates.TemplateResponse(
             request,
             "link_form.html",
-            {"user": user, "link": None, "error": msg, "base_url": settings.base_url,
+            {"user": user, "nav": "create", "link": None, "error": msg, "base_url": settings.base_url,
              "ec_levels": EC_LEVELS, "design": design, "has_logo": False,
              "form": {"target_url": target_url, "slug": slug, "title": title, "expires_at": expires_at,
                       "use_brand_logo": use_brand_logo == "on"}},
@@ -318,7 +362,7 @@ def edit_get(link_id: int, request: Request, user: str = Depends(require_user)) 
     return templates.TemplateResponse(
         request,
         "link_form.html",
-        {"user": user, "link": link, "error": None, "base_url": settings.base_url,
+        {"user": user, "nav": "links", "link": link, "error": None, "base_url": settings.base_url,
          "ec_levels": EC_LEVELS, "has_logo": _logo_path(link_id).exists(),
          "design": {"fg": link["qr_fg"], "bg": link["qr_bg"], "size": link["qr_size"], "ec": link["qr_ec"]}},
     )
@@ -378,7 +422,7 @@ def edit_post(
         return templates.TemplateResponse(
             request,
             "link_form.html",
-            {"user": user, "link": existing, "error": msg, "base_url": settings.base_url,
+            {"user": user, "nav": "links", "link": existing, "error": msg, "base_url": settings.base_url,
              "ec_levels": EC_LEVELS, "has_logo": have_logo, "design": design},
             status_code=status,
         )
@@ -475,6 +519,88 @@ def link_qr_svg(link_id: int, request: Request, user: str = Depends(require_user
                     headers={"Content-Disposition": f'inline; filename="qr-{link_id}.svg"'})
 
 
+# ---------- admin: analytics helpers (shared; optional link_id filter) ----------
+
+def _win(link_id: int | None, days: int) -> tuple[str, list]:
+    where = "ts >= NOW() - make_interval(days => %s)"
+    if link_id is not None:
+        return "link_id = %s AND " + where, [link_id, days]
+    return where, [days]
+
+
+def _headline(cur, days: int, link_id: int | None = None) -> dict:
+    where, params = _win(link_id, days)
+    cur.execute(
+        f"""SELECT COUNT(*) AS total,
+                  COUNT(*) FILTER (WHERE source='qr')     AS qr,
+                  COUNT(*) FILTER (WHERE source='link')   AS link,
+                  COUNT(*) FILTER (WHERE source='direct') AS direct,
+                  COUNT(*) FILTER (WHERE NOT is_bot)      AS humans,
+                  COUNT(*) FILTER (WHERE is_bot)          AS bots,
+                  COUNT(DISTINCT ip)                      AS unique_ips
+           FROM click_events WHERE {where}""",
+        params,
+    )
+    return cur.fetchone()
+
+
+def _daily_series(cur, days: int, link_id: int | None = None) -> list[tuple[date, int, int]]:
+    where, params = _win(link_id, days)
+    cur.execute(
+        f"""SELECT date_trunc('day', ts)::date AS d, COUNT(*) AS n,
+                  COUNT(*) FILTER (WHERE source='qr') AS qr
+           FROM click_events WHERE {where} GROUP BY 1 ORDER BY 1""",
+        params,
+    )
+    by_day = {r["d"]: (r["n"], r["qr"]) for r in cur.fetchall()}
+    today = datetime.now(timezone.utc).date()
+    out: list[tuple[date, int, int]] = []
+    d = today - timedelta(days=days - 1)
+    while d <= today:
+        n, qrn = by_day.get(d, (0, 0))
+        out.append((d, n, qrn))
+        d += timedelta(days=1)
+    return out
+
+
+def _breakdown(cur, column: str, days: int, limit: int, link_id: int | None = None) -> list[dict]:
+    where, params = _win(link_id, days)
+    cur.execute(
+        f"""SELECT COALESCE(NULLIF({column}::text, ''), '(unknown)') AS label, COUNT(*) AS n
+            FROM click_events WHERE {where}
+            GROUP BY 1 ORDER BY n DESC, label LIMIT {int(limit)}""",
+        params,
+    )
+    return cur.fetchall()
+
+
+def _breakdowns(cur, days: int, link_id: int | None = None) -> dict:
+    return {
+        "source":   _breakdown(cur, "source", days, 5, link_id),
+        "device":   _breakdown(cur, "device", days, 6, link_id),
+        "browser":  _breakdown(cur, "browser", days, 8, link_id),
+        "os":       _breakdown(cur, "os", days, 8, link_id),
+        "country":  _breakdown(cur, "country_name", days, 10, link_id),
+        "city":     _breakdown(cur, "city", days, 10, link_id),
+        "referrer": _breakdown(cur, "referrer", days, 10, link_id),
+    }
+
+
+def _sparkline_svg(counts: list[int], width: int = 120, height: int = 32) -> str:
+    if not counts:
+        counts = [0]
+    peak = max(counts) or 1
+    n = len(counts)
+    step = width / (n - 1) if n > 1 else width
+    pts = [f"{i*step:.1f},{height-2-(height-4)*v/peak:.1f}" for i, v in enumerate(counts)]
+    line = " ".join(pts)
+    area = f"0,{height} {line} {width},{height}"
+    return (f'<svg class="spark" viewBox="0 0 {width} {height}" preserveAspectRatio="none" aria-hidden="true">'
+            f'<polygon points="{area}" fill="var(--accent)" opacity=".16"/>'
+            f'<polyline points="{line}" fill="none" stroke="var(--accent)" stroke-width="1.8" '
+            f'stroke-linejoin="round" stroke-linecap="round"/></svg>')
+
+
 # ---------- admin: stats ----------
 
 def _bars_svg(series: list[tuple[date, int, int]], width: int = 720, height: int = 160) -> str:
@@ -514,69 +640,81 @@ def link_stats(link_id: int, request: Request, user: str = Depends(require_user)
         link = cur.fetchone()
         if not link:
             raise HTTPException(status_code=404, detail="Link not found")
-
-        cur.execute(
-            """SELECT COUNT(*) AS total,
-                      COUNT(*) FILTER (WHERE source='qr')     AS qr,
-                      COUNT(*) FILTER (WHERE source='link')   AS link,
-                      COUNT(*) FILTER (WHERE source='direct') AS direct,
-                      COUNT(*) FILTER (WHERE NOT is_bot)      AS humans,
-                      COUNT(*) FILTER (WHERE is_bot)          AS bots,
-                      COUNT(DISTINCT ip)                      AS unique_ips
-               FROM click_events
-               WHERE link_id=%s AND ts >= NOW() - make_interval(days => %s)""",
-            (link_id, days),
-        )
-        head = cur.fetchone()
-
-        cur.execute(
-            """SELECT date_trunc('day', ts)::date AS d,
-                      COUNT(*) AS n,
-                      COUNT(*) FILTER (WHERE source='qr') AS qr
-               FROM click_events
-               WHERE link_id=%s AND ts >= NOW() - make_interval(days => %s)
-               GROUP BY 1 ORDER BY 1""",
-            (link_id, days),
-        )
-        by_day = {r["d"]: (r["n"], r["qr"]) for r in cur.fetchall()}
-
-        def top(column: str, limit: int = 10) -> list[dict]:
-            cur.execute(
-                f"""SELECT COALESCE(NULLIF({column}::text, ''), '(unknown)') AS label, COUNT(*) AS n
-                    FROM click_events
-                    WHERE link_id=%s AND ts >= NOW() - make_interval(days => %s)
-                    GROUP BY 1 ORDER BY n DESC, label LIMIT %s""",
-                (link_id, days, limit),
-            )
-            return cur.fetchall()
-
-        breakdowns = {
-            "source": top("source", 5),
-            "device": top("device", 6),
-            "browser": top("browser", 8),
-            "os": top("os", 8),
-            "country": top("country_name", 10),
-            "city": top("city", 10),
-            "referrer": top("referrer", 10),
-        }
-
-    # gap-filled daily series ending today (UTC)
-    today = datetime.now(timezone.utc).date()
-    start = today - timedelta(days=days - 1)
-    series: list[tuple[date, int, int]] = []
-    d = start
-    while d <= today:
-        n, qrn = by_day.get(d, (0, 0))
-        series.append((d, n, qrn))
-        d += timedelta(days=1)
+        head = _headline(cur, days, link_id)
+        series = _daily_series(cur, days, link_id)
+        breakdowns = _breakdowns(cur, days, link_id)
     chart = _bars_svg(series)
-
     return templates.TemplateResponse(
         request,
         "stats.html",
-        {"user": user, "link": link, "base_url": settings.base_url, "days": days,
-         "head": head, "breakdowns": breakdowns, "chart": chart},
+        {"user": user, "nav": "analytics", "link": link, "base_url": settings.base_url,
+         "days": days, "head": head, "breakdowns": breakdowns, "chart": chart},
     )
+
+
+# ---------- admin: aggregate analytics ----------
+
+@app.get("/admin/analytics", response_class=HTMLResponse)
+def analytics_page(request: Request, user: str = Depends(require_user), days: int = 30) -> Response:
+    days = min(3650, max(1, days))
+    with db.conn() as c, c.cursor() as cur:
+        head = _headline(cur, days)
+        series = _daily_series(cur, days)
+        breakdowns = _breakdowns(cur, days)
+        cur.execute(
+            """SELECT l.id, l.slug, l.title, COUNT(*) AS n,
+                      COUNT(*) FILTER (WHERE e.source='qr') AS qr
+               FROM click_events e JOIN links l ON l.id = e.link_id
+               WHERE e.ts >= NOW() - make_interval(days => %s)
+               GROUP BY l.id, l.slug, l.title
+               ORDER BY n DESC LIMIT 10""",
+            (days,),
+        )
+        top_links = cur.fetchall()
+    return templates.TemplateResponse(
+        request,
+        "analytics.html",
+        {"user": user, "nav": "analytics", "base_url": settings.base_url, "days": days,
+         "head": head, "chart": _bars_svg(series), "breakdowns": breakdowns, "top_links": top_links},
+    )
+
+
+# ---------- admin: QR gallery ----------
+
+@app.get("/admin/qr", response_class=HTMLResponse)
+def qr_gallery(request: Request, user: str = Depends(require_user)) -> Response:
+    with db.conn() as c, c.cursor() as cur:
+        cur.execute("""
+            SELECT l.id, l.slug, l.title, l.qr_logo, l.click_count,
+                   (SELECT COUNT(*) FROM click_events e
+                      WHERE e.link_id = l.id AND e.source = 'qr') AS qr_scans
+            FROM links l
+            ORDER BY l.created_at DESC
+            LIMIT 500
+        """)
+        links = cur.fetchall()
+    return templates.TemplateResponse(
+        request,
+        "qr_gallery.html",
+        {"user": user, "nav": "qr", "base_url": settings.base_url, "links": links},
+    )
+
+
+@app.post("/admin/{link_id}/qr/logo-toggle")
+def qr_logo_toggle(link_id: int, user: str = Depends(require_user)) -> Response:
+    with db.conn() as c, c.cursor() as cur:
+        cur.execute("SELECT qr_logo FROM links WHERE id = %s", (link_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Link not found")
+        if row["qr_logo"]:
+            _logo_path(link_id).unlink(missing_ok=True)
+            cur.execute("UPDATE links SET qr_logo = FALSE WHERE id = %s", (link_id,))
+        else:
+            _save_brand_logo(link_id)
+            cur.execute("UPDATE links SET qr_logo = TRUE, qr_ec = 'H' WHERE id = %s", (link_id,))
+        c.commit()
+    return RedirectResponse("/admin/qr", status_code=303)
 
 
 # ---------- public redirect (must be last; matches /{anything}) ----------

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}QR Codes · shorturl{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>QR Codes</h1>
+    <div class="sub">{{ links|length }} code{{ '' if links|length == 1 else 's' }} · toggle the Janapriya logo per code</div>
+  </div>
+</div>
+
+{% if links|length == 0 %}
+  <div class="empty"><p>No links yet.</p><a class="btn" href="/admin/new">Create your first link</a></div>
+{% else %}
+<div class="qr-gallery">
+  {% for l in links %}
+  <div class="qr-tile">
+    <a class="qr-img" href="/admin/{{ l.id }}/qr.png" download title="Download PNG">
+      <img src="/admin/{{ l.id }}/qr.png" width="150" height="150" alt="QR for /{{ l.slug }}">
+    </a>
+    <div class="qr-body">
+      <div class="qr-slug">
+        <a href="/admin/{{ l.id }}/stats">/{{ l.slug }}</a>
+        {% if l.title %}<span class="muted small">{{ l.title }}</span>{% endif %}
+      </div>
+      <div class="qr-nums muted small">{{ l.click_count }} clicks · {{ l.qr_scans }} scans</div>
+      <div class="qr-tile-actions">
+        <a class="pill" href="/admin/{{ l.id }}/qr.png" download>PNG</a>
+        <a class="pill" href="/admin/{{ l.id }}/qr.svg" download>SVG</a>
+        <form method="post" action="/admin/{{ l.id }}/qr/logo-toggle">
+          <button class="pill {% if l.qr_logo %}on{% endif %}" type="submit">
+            {% if l.qr_logo %}Logo: on{% else %}Logo: off{% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

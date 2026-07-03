@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Links · shorturl{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Links</h1>
+    <div class="sub">{{ links|length }} link{{ '' if links|length == 1 else 's' }}</div>
+  </div>
+  <a class="btn" href="/admin/new">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Create new
+  </a>
+</div>
+
+{% if links|length == 0 %}
+  <div class="empty"><p>No links yet.</p><a class="btn" href="/admin/new">Create your first link</a></div>
+{% else %}
+<div class="link-list">
+  {% for l in links %}
+  {% set disp = base_url.split('://')[-1].rstrip('/') %}
+  {% set short = base_url.rstrip('/') ~ '/' ~ l.slug %}
+  {% set expired = l.expires_at and l.expires_at < now %}
+  {% set host = (l.target_url.split('/')[2] if '://' in l.target_url else l.target_url) %}
+  <article class="link-card {% if not l.is_active or expired %}is-off{% endif %}">
+    <div class="lc-fav">
+      <img src="https://www.google.com/s2/favicons?domain={{ host }}&sz=64" alt="" width="24" height="24"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <span class="mono-fav">{{ host[0]|upper if host else '?' }}</span>
+    </div>
+
+    <div class="lc-main">
+      <h3 class="lc-title">
+        <a href="/admin/{{ l.id }}/stats">{{ l.title or ('/' ~ l.slug) }}</a>
+        {% if expired %}<span class="badge bad">expired</span>
+        {% elif not l.is_active %}<span class="badge warn">disabled</span>{% endif %}
+        {% if l.qr_logo %}<span class="badge ok">logo QR</span>{% endif %}
+      </h3>
+      <div class="lc-short">
+        <a href="{{ short }}" target="_blank" rel="noopener">{{ disp }}/{{ l.slug }}</a>
+        <button class="copy-btn" type="button" data-copy="{{ short }}" aria-label="Copy short link" title="Copy short link">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <svg class="tick" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+      </div>
+      <a class="lc-dest" href="{{ l.target_url }}" target="_blank" rel="noopener" title="{{ l.target_url }}">{{ l.target_url }}</a>
+      <div class="lc-metarow muted small">
+        <span>{{ l.created_at.strftime('%d %b %Y') }}</span>
+        {% if l.expires_at and not expired %}<span>· expires {{ l.expires_at.strftime('%d %b %Y') }}</span>{% endif %}
+      </div>
+    </div>
+
+    <div class="lc-engage">
+      <div class="lc-nums">
+        <div><b>{{ l.click_count }}</b><span>clicks</span></div>
+        <div class="qr"><b>{{ l.qr_scans }}</b><span>QR scans</span></div>
+      </div>
+      {{ sparklines[l.id]|safe }}
+    </div>
+
+    <a class="lc-qr" href="/admin/{{ l.id }}/qr.png" download title="Download QR">
+      <img src="/admin/{{ l.id }}/qr.png" width="60" height="60" alt="QR for /{{ l.slug }}">
+    </a>
+
+    <div class="lc-actions">
+      <a class="pill" href="/admin/{{ l.id }}/stats">Stats</a>
+      <a class="pill" href="/admin/{{ l.id }}/edit">Edit</a>
+      <details class="menu">
+        <summary aria-label="More actions">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+        </summary>
+        <div class="menu-pop">
+          <a href="/admin/{{ l.id }}/qr.png" download>Download QR (PNG)</a>
+          <a href="/admin/{{ l.id }}/qr.svg" download>Download QR (SVG)</a>
+          <form method="post" action="/admin/{{ l.id }}/toggle"><button class="linkbtn" type="submit">{% if l.is_active %}Disable{% else %}Enable{% endif %}</button></form>
+          <form method="post" action="/admin/{{ l.id }}/delete" onsubmit="return confirm('Delete /{{ l.slug }}? This cannot be undone.')"><button class="linkbtn danger" type="submit">Delete</button></form>
+        </div>
+      </details>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
