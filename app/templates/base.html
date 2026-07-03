@@ -23,7 +23,7 @@
       <span class="logo-text">shorturl</span>
     </a>
 
-    <a href="/admin/new" class="create-btn">
+    <a href="/admin/new" class="create-btn {% if nav == 'create' %}active{% endif %}"{% if nav == 'create' %} aria-current="page"{% endif %}>
       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       <span>Create new</span>
     </a>
