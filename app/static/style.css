@@ -292,9 +292,8 @@ table.mini .num { text-align: right; white-space: nowrap; font-variant-numeric: 
 .link-card:hover { box-shadow: var(--shadow); border-color: var(--line-strong); }
 .link-card.is-off { opacity: .62; }
 
-.lc-fav { flex: none; width: 44px; height: 44px; border-radius: 11px; background: #EEF0F4; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.lc-fav img { display: block; }
-.mono-fav { display: none; width: 100%; height: 100%; align-items: center; justify-content: center; font-weight: 700; color: var(--navy); background: #EEF0F4; }
+.lc-fav { flex: none; width: 44px; height: 44px; border-radius: 11px; border: 1px solid rgba(0,0,0,.05); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.mono-fav { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; }
 
 .lc-main { flex: 1 1 auto; min-width: 0; }
 .lc-title { display: flex; align-items: center; gap: 8px; margin: 0 0 3px; font-size: 15.5px; font-weight: 650; }

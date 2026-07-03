@@ -20,12 +20,10 @@
   {% set disp = base_url.split('://')[-1].rstrip('/') %}
   {% set short = base_url.rstrip('/') ~ '/' ~ l.slug %}
   {% set expired = l.expires_at and l.expires_at < now %}
-  {% set host = (l.target_url.split('/')[2] if '://' in l.target_url else l.target_url) %}
+  {% set mono = monograms[l.id] %}
   <article class="link-card {% if not l.is_active or expired %}is-off{% endif %}">
-    <div class="lc-fav">
-      <img src="https://www.google.com/s2/favicons?domain={{ host }}&sz=64" alt="" width="24" height="24"
-           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-      <span class="mono-fav">{{ host[0]|upper if host else '?' }}</span>
+    <div class="lc-fav" style="background: {{ mono.bg }}">
+      <span class="mono-fav" style="color: {{ mono.fg }}">{{ mono.letter }}</span>
     </div>
 
     <div class="lc-main">

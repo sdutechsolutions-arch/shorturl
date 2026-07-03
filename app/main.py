@@ -1,3 +1,4 @@
+import hashlib
 import io
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
@@ -99,6 +100,17 @@ def _logo_path(link_id: int) -> Path:
 def _short_url(slug: str, *, qr_source: bool = False) -> str:
     base = settings.base_url.rstrip("/")
     return f"{base}/{slug}?s=q" if qr_source else f"{base}/{slug}"
+
+
+def _monogram(target_url: str) -> dict:
+    """Deterministic coloured monogram for a destination host — a local,
+    privacy-preserving stand-in for a favicon (no external request)."""
+    host = (urlparse(target_url).netloc or (target_url or "")).lower()
+    if host.startswith("www."):
+        host = host[4:]
+    letter = host[0].upper() if host else "?"
+    hue = int(hashlib.md5(host.encode()).hexdigest()[:6], 16) % 360
+    return {"letter": letter, "bg": f"hsl({hue} 58% 93%)", "fg": f"hsl({hue} 46% 36%)"}
 
 
 def _clean_hex(value: str, default: str) -> str:
@@ -260,11 +272,13 @@ def links_list(request: Request, user: str = Depends(require_user)) -> Response:
                   if l["id"] in by_link else flat)
         for l in links
     }
+    monograms = {l["id"]: _monogram(l["target_url"]) for l in links}
     return templates.TemplateResponse(
         request,
         "links.html",
         {"user": user, "nav": "links", "base_url": settings.base_url,
-         "now": datetime.now(timezone.utc), "links": links, "sparklines": sparklines},
+         "now": datetime.now(timezone.utc), "links": links,
+         "sparklines": sparklines, "monograms": monograms},
     )
 
 
