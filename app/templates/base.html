@@ -7,20 +7,52 @@
   <title>{% block title %}shorturl{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
-  <header>
-    <a href="/admin/" class="brand">shorturl</a>
-    {% if user is defined and user %}
-      <nav>
-        <a href="/admin/new">+ new link</a>
-        <form method="post" action="/admin/logout" class="inline">
-          <button type="submit" class="linkbtn">logout ({{ user }})</button>
-        </form>
-      </nav>
-    {% endif %}
-  </header>
-  <main>
-    {% block content %}{% endblock %}
-  </main>
+{% set signed_in = user is defined and user %}
+{% set path = request.url.path if request is defined else '' %}
+<body class="{% if signed_in %}app{% else %}auth{% endif %}">
+  {% if signed_in %}
+  <aside class="sidebar">
+    <a href="/admin/" class="logo">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+          <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+        </svg>
+      </span>
+      <span class="logo-text">shorturl</span>
+    </a>
+
+    <nav class="side-nav">
+      <a href="/admin/" class="{% if path != '/admin/new' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        <span>Links</span>
+      </a>
+      <a href="/admin/new" class="{% if path == '/admin/new' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>New link</span>
+      </a>
+    </nav>
+
+    <div class="side-foot">
+      <div class="whoami">
+        <span class="avatar" aria-hidden="true">{{ user[0]|upper }}</span>
+        <span class="uname">{{ user }}</span>
+      </div>
+      <form method="post" action="/admin/logout">
+        <button type="submit" class="signout">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign out
+        </button>
+      </form>
+    </div>
+  </aside>
+  {% endif %}
+
+  <div class="content">
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
 </body>
 </html>

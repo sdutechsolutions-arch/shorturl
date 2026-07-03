@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{% if link %}Edit{% else %}New link{% endif %} · shorturl{% endblock %}
 {% block content %}
-<div class="card">
+<div class="card" style="max-width:760px">
   <h1>{% if link %}Edit link{% else %}New link{% endif %}</h1>
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
   {% set f = form if form is defined else (link or {}) %}
